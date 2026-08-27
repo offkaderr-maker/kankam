@@ -10,7 +10,7 @@ from kanka_network import KankaNetworkEngine
 class KankaUygulamasi(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("🧠 Kanka AI v3.4 - Z-Raporu & Akıllı Arşiv Sürümü")
+        self.title("🧠 Kanka AI v3.5 - Dinamik Proje Adlandırma Sürümü")
         self.geometry("1060x780")
         
         self.hafiza = KankaMemoryManager()
@@ -30,7 +30,10 @@ class KankaUygulamasi(ctk.CTk):
         self.sol_panel.grid_propagate(False)
         
         lbl = ctk.CTkLabel(self.sol_panel, text="📂 ARŞİV ODALARI", font=("Segoe UI", 13, "bold"), text_color="#8ec07c")
-        lbl.pack(pady=(20, 10), padx=15, anchor="w")
+        lbl.pack(pady=(20, 5), padx=15, anchor="w")
+        
+        lbl_bilgi = ctk.CTkLabel(self.sol_panel, text="(İsim değiştirmek için çift tıkla)", font=("Segoe UI", 10, "italic"), text_color="#a89984")
+        lbl_bilgi.pack(pady=(0, 10), padx=15, anchor="w")
         
         self.proje_butonlari = {}
         
@@ -38,11 +41,16 @@ class KankaUygulamasi(ctk.CTk):
         btn_pasif.pack(fill="x", padx=10, pady=8)
         self.proje_butonlari["Günlük_Sohbet"] = btn_pasif
         
+        # 🎮 Dinamik Proje Odaları Dizilimi
         for i in range(1, 6):
-            p_adi = f"Proje_{i}"
-            btn = ctk.CTkButton(self.sol_panel, text=f"🎮 {p_adi}", anchor="w", font=("Segoe UI", 12), fg_color="transparent", text_color="#ffffff", hover_color="#2d2d34", command=lambda name=p_adi: self.proje_degistir(name))
+            p_kod_adi = f"Proje_{i}"
+            p_gorunur_adi = self.hafiza.proje_haritasi.get(p_kod_adi, p_kod_adi)
+            
+            btn = ctk.CTkButton(self.sol_panel, text=f"🎮 {p_gorunur_adi}", anchor="w", font=("Segoe UI", 12), fg_color="transparent", text_color="#ffffff", hover_color="#2d2d34", command=lambda name=p_kod_adi: self.proje_degistir(name))
             btn.pack(fill="x", padx=10, pady=4)
-            self.proje_butonlari[p_adi] = btn
+            
+            btn.bind("<Double-1>", lambda event, kod=p_kod_adi: self.proje_ismini_degistir_popup(kod))
+            self.proje_butonlari[p_kod_adi] = btn
             
         self.btn_z_oku = ctk.CTkButton(self.sol_panel, text="📋 Odadaki Z-Raporunu Gör", font=("Segoe UI", 11, "bold"), fg_color="#d65d0e", hover_color="#af3a03", command=self.mevcut_z_raporunu_goster)
         self.btn_z_oku.pack(fill="x", padx=10, pady=(20, 4))
@@ -59,7 +67,6 @@ class KankaUygulamasi(ctk.CTk):
         lbl_d.pack(anchor="w")
         self.lbl_onay = ctk.CTkLabel(self.alt_pan, text="🗹 Qwen-7B Aktif", font=("Segoe UI", 11, "bold"), text_color="#27ae60")
         self.lbl_onay.pack(anchor="w")
-        
         # SAĞ PANEL
         self.sag_panel = ctk.CTkFrame(self, fg_color="transparent")
         self.sag_panel.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
@@ -84,7 +91,23 @@ class KankaUygulamasi(ctk.CTk):
         self.gonder_butonu = ctk.CTkButton(self.alt_isl, text="Gönder", width=110, height=45, font=("Segoe UI", 13, "bold"), fg_color="#458588", hover_color="#076678", command=self.mesaj_gonder)
         self.gonder_butonu.grid(row=0, column=2, sticky="e")
         
-        self.ekrana_yaz("🤖 Kanka AI v3.4: %100 Hibrit Arşiv Gücü Devrede! Geyikler uçucu, projeler kalıcı.\nİpucu: Kritik kararları kaydetmek için mesajına 'z-raporu' veya 'arşive ekle' yaz kanka!\n")
+        self.ekrana_yaz("🤖 Kanka AI v3.5: Dinamik Adlandırma Devrede! Geyikler uçucu, projeler kalıcı.\nİpucu: Oda adını değiştirmek için butonun üzerine çift tıkla kanka!\n")
+
+    def proje_ismini_degistir_popup(self, kod_adi):
+        """v3.5 Eklentisi: Kullanıcıdan pop-up ile yeni ismi alan tetikleyici."""
+        mevcut_ad = self.hafiza.proje_haritasi.get(kod_adi, kod_adi)
+        dialog = ctk.CTkInputDialog(text=f"'{mevcut_ad}' için yeni bir isim gir kanka:", title="Oda Adını Değiştir")
+        yeni_ad = dialog.get_input()
+        
+        if yeni_ad:
+            basarili, sonuc = self.hafiza.proje_adlandir(kod_adi, yeni_ad)
+            if basarili:
+                self.proje_butonlari[kod_adi].configure(text=f"🎮 {sonuc}")
+                self.ekrana_yaz(f"✨ [SİSTEM]: Odasının adı başarıyla '{sonuc}' olarak güncellendi kanka!")
+                if self.aktif_proje == kod_adi:
+                    self.proje_degistir(kod_adi)
+            else:
+                self.ekrana_yaz(f"❌ [SİSTEM HATA]: {sonuc}")
 
     def tema_degistir(self, secim):
         if secim == "Karanlık Mod":
@@ -98,11 +121,11 @@ class KankaUygulamasi(ctk.CTk):
             self.metin_alani.configure(fg_color="#ffffff", text_color="#1f2937", border_color="#e5e7eb")
             self.giris_kutusu.configure(fg_color="#ffffff", text_color="#000000", border_color="#d1d5db")
 
-    def proje_degistir(self, pr_adi):
-        self.aktif_proje = pr_adi
+    def proje_degistir(self, pr_kod_adi):
+        self.aktif_proje = pr_kod_adi
         for n, btn in self.proje_butonlari.items():
-            if n == pr_adi:
-                btn.configure(fg_color="#458588" if pr_adi=="Günlük_Sohbet" else "#26262b")
+            if n == pr_kod_adi:
+                btn.configure(fg_color="#458588" if pr_kod_adi=="Günlük_Sohbet" else "#26262b")
             else:
                 btn.configure(fg_color="transparent")
                 
@@ -110,17 +133,19 @@ class KankaUygulamasi(ctk.CTk):
         self.metin_alani.delete("1.0", "end")
         self.metin_alani.configure(state="disabled")
         
-        if pr_adi == "Günlük_Sohbet":
+        if pr_kod_adi == "Günlük_Sohbet":
             self.ekrana_yaz("💬 Günlük Sohbet odasındayız. Burada konuşulanlar sisteme yük olmaz, kapanınca silinir kanka.\n")
         else:
-            self.ekrana_yaz(f"📂 '{pr_adi}' odasındayız kanka. Projenin kurumsal hafızası ve Z-Raporları yüklendi!\n")
+            guncel_ad = self.hafiza.proje_haritasi.get(pr_kod_adi, pr_kod_adi)
+            self.ekrana_yaz(f"📂 '{guncel_ad}' odasındayız kanka. Projenin kurumsal hafızası ve Z-Raporları yüklendi!\n")
 
     def mevcut_z_raporunu_goster(self):
         if self.aktif_proje == "Günlük_Sohbet":
             self.ekrana_yaz("⚠️ Günlük sohbet odasının bir Z-Raporu olmaz kanka, projelerden birini seç.")
             return
-        icerik = KankaZReportManager.z_raporu_oku(self.aktif_proje)
-        self.ekrana_yaz(f"\n📋 --- {self.aktif_proje} MEVCUT Z-RAPORU --- \n{icerik}\n----------------------------------\n")
+        guncel_ad = self.hafiza.proje_haritasi.get(self.aktif_proje, self.aktif_proje)
+        icerik = KankaZReportManager.z_raporu_oku(guncel_ad)
+        self.ekrana_yaz(f"\n📋 --- {guncel_ad} MEVCUT Z-RAPORU --- \n{icerik}\n----------------------------------\n")
 
     def ekrana_yaz(self, mesaj):
         self.metin_alani.configure(state="normal")
@@ -157,3 +182,4 @@ class KankaUygulamasi(ctk.CTk):
 if __name__ == "__main__":
     app = KankaUygulamasi()
     app.mainloop()
+

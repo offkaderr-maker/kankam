@@ -48,8 +48,7 @@ class KankaZReportManager:
 class KankaMemoryManager:
     def __init__(self):
         self.kalici_bilgi_olustur()
-        for i in range(1, 6): 
-            self.kirli_hafizayi_temizle(f"Proje_{i}")
+        self.proje_haritasi_yukle()
         
     def kalici_bilgi_olustur(self):
         yolu = os.path.join(HAFIZA_KLASORU, "kanka_kimdir.json")
@@ -61,6 +60,42 @@ class KankaMemoryManager:
             }
             with open(yolu, "w", encoding="utf-8") as f: 
                 json.dump(veri, f, ensure_ascii=False, indent=4)
+
+    def proje_haritasi_yukle(self):
+        """v3.5 Eklentisi: Kod tabanlı isim haritasını diskten yükler."""
+        self.harita_yolu = os.path.join(HAFIZA_KLASORU, "proje_isimleri.json")
+        if os.path.exists(self.harita_yolu):
+            with open(self.harita_yolu, "r", encoding="utf-8") as f:
+                self.proje_haritasi = json.load(f)
+        else:
+            self.proje_haritasi = {f"Proje_{i}": f"Proje_{i}" for i in range(1, 6)}
+            self.proje_haritasi_kaydet()
+
+    def proje_haritasi_kaydet(self):
+        with open(self.harita_yolu, "w", encoding="utf-8") as f:
+            json.dump(self.proje_haritasi, f, ensure_ascii=False, indent=4)
+
+    def proje_adlandir(self, eski_kod_adi, yeni_gorunur_adi):
+        """v3.5 Eklentisi: Klasör adını ve harita verisini günceller."""
+        eski_temiz = eski_kod_adi.strip()
+        yeni_temiz = yeni_gorunur_adi.strip().replace(" ", "_").replace("/", "-")
+        
+        if not yeni_temiz:
+            return False, "Kanka boş isim koyamazsın!"
+            
+        # Eğer klasör diskte zaten eski adıyla varsa, yeni adıyla yeniden adlandırıyoruz
+        eski_klasor_yolu = os.path.join(HAFIZA_KLASORU, eski_temiz)
+        yeni_klasor_yolu = os.path.join(HAFIZA_KLASORU, yeni_temiz)
+        
+        if os.path.exists(eski_klasor_yolu) and eski_temiz != yeni_temiz:
+            try:
+                os.rename(eski_klasor_yolu, yeni_klasor_yolu)
+            except Exception as e:
+                return False, f"Klasör adlandırılamadı kanka: {e}"
+
+        self.proje_haritasi[eski_temiz] = yeni_temiz
+        self.proje_haritasi_kaydet()
+        return True, yeni_temiz
             
     def gunluk_kaydet(self, pr_adi, msg, cevap):
         if pr_adi == "Günlük_Sohbet":
@@ -89,21 +124,6 @@ class KankaMemoryManager:
         rafine = [{"tarih": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "kullanici": "[Sistem]: RAM hafiflet.", "kanka": "[Sistem]: Kararlar kilitlendi."}]
         rafine.extend(gecmis[-12:])
         return rafine
-        
-    def kirli_hafizayi_temizle(self, pr_adi):
-        yol = os.path.join(HAFIZA_KLASORU, pr_adi, "chat_history.json")
-        if os.path.exists(yol) and os.path.getsize(yol) > 0:
-            with open(yol, "r", encoding="utf-8") as f: kayitlar = json.load(f)
-            simdi = datetime.now()
-            guncel = []
-            for k in kayitlar:
-                try:
-                    k_tar = datetime.strptime(k["tarih"], "%Y-%m-%d %H:%M:%S")
-                    if simdi - k_tar < timedelta(days=7): guncel.append(k)
-                except: 
-                    guncel.append(k)
-            with open(yol, "w", encoding="utf-8") as f: 
-                json.dump(guncel, f, ensure_ascii=False, indent=4)
             
     def model_icin_gecmis_hazirla(self, pr_adi):
         with open(os.path.join(HAFIZA_KLASORU, "kanka_kimdir.json"), "r", encoding="utf-8") as f: 
